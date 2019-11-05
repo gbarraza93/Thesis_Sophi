@@ -12,6 +12,8 @@ def main():
     path = ND.MAIN_DIRECTORY
     files = os.listdir(path)
     # print(sorted(files))
+
+    global_data_frame = pd.DataFrame()
     for year in sorted(files):
         # print(year)
         year_path = os.path.join(path, year)
@@ -22,17 +24,32 @@ def main():
             month_days = os.listdir(month_path)
             for day in sorted(month_days):
                 print(day)
-################################# Still to fix
-                doc = os.path.join(path, '2018/2018_09/2018_09_18/Typ_AQZustandArchiv/FastLaneTLV.VMS_0603_PRAR_W.AQZustandArchiv.Typ_AQZustandArchiv.20180918.01.xml')
-                if not os.path.exists(doc):
-                    raise FileNotFoundError(doc)
+                day_path = os.path.join(month_path, day)
+                # day_folders = os.listdir(day_path)
+                # print(day_folders)
+                date_format = day.replace("_", "")  # getting date format as YYYYMMDD
+                # Characteristics directory
+                characteristics_directory = os.path.join(
+                    day_path, ND.CHARACTERISTICS_DIR
+                )
+
+                characteristics_file = os.path.join(
+                    characteristics_directory,
+                    ND.FASTLANE_FILE_PREFIX
+                    + "{}".format(date_format)
+                    + ND.XML_FILES_ENDING,
+                )
+                if not os.path.exists(characteristics_file):
+                    raise FileNotFoundError(characteristics_file)
 
                 # Getting the CDATA content from the XML file
-                cdata = xmlFunc.get_xml_CDATA_from_element_tail(doc, ND.HEADER)
+                cdata = xmlFunc.get_xml_CDATA_from_element_tail(
+                    characteristics_file, ND.HEADER
+                )
                 # Ridding out of unnecessary characters in our data
-                clean_cdata = csvFunc.remove_characters(cdata, ['\'', '\"'])
+                clean_cdata = csvFunc.remove_characters(cdata, ["'", '"'])
                 # Creating a csv reader object out of the clean data
-                myreader = csv.reader(clean_cdata.splitlines(), delimiter=';')
+                myreader = csv.reader(clean_cdata.splitlines(), delimiter=";")
                 # Converting csv object back to a list
                 list_of_values = csvFunc.remove_empty_rows(myreader)
                 # Converting list into a Pandas data frame for easier data managing
@@ -40,34 +57,48 @@ def main():
                 # Removing unnecessary timestamps
                 useles_timestamps = ["DataTimestampUTC", "SaveTimestampLOCAL"]
                 data_frame = pdFunc.drop_selected_columns(useles_timestamps, data_frame)
-                data_frame = data_frame.drop(["DataTimestampUTC", "SaveTimestampLOCAL"], axis=1)
-
 
                 # Convert DataTimestampLOCAL to date format
                 def to_datatime(dt):
-                    return datetime.strptime(dt, '%Y-%m-%d %H:%M:%S')
+                    return datetime.strptime(dt, "%Y-%m-%d %H:%M:%S")
 
-
-                data_frame['DataTimestampLOCAL'] = data_frame['DataTimestampLOCAL'].apply(to_datatime)
+                data_frame["DataTimestampLOCAL"] = data_frame[
+                    "DataTimestampLOCAL"
+                ].apply(to_datatime)
 
                 # Separate Date and Time into different columns
-                date = [d.date() for d in data_frame['DataTimestampLOCAL']]
-                time = [d.time() for d in data_frame['DataTimestampLOCAL']]
+                date = [d.date() for d in data_frame["DataTimestampLOCAL"]]
+                time = [d.time() for d in data_frame["DataTimestampLOCAL"]]
 
-                data_frame.insert(0, 'date', date)
-                data_frame.insert(1, 'time', time)
+                data_frame.insert(0, "date", date)
+                data_frame.insert(1, "time", time)
 
                 # # Take DataTimestampLOCAL as the index of the table
                 # data_frame.set_index('DataTimestampLOCAL', inplace = True)
 
                 # Remove DataTimestampLOCAL since we already split it into date and time
-                data_frame = data_frame.drop(['DataTimestampLOCAL'], axis=1)
+                data_frame = pdFunc.drop_selected_columns(
+                    ["DataTimestampLOCAL"], data_frame
+                )
 
-                # print(data_frame)
+                # TODO: add 2nd part: Discrete time data
 
-                # export dataframe to csv
-                pdFunc.convert_to_csv('table_with_data_2.csv', data_frame)
+                # TODO: add 3rd part: Previous time datat
+
+                print("Old data frame")
+                print(global_data_frame)
+                if global_data_frame.empty:
+                    global_data_frame = data_frame
+                else:
+                    # Appending elements to the bottom of the data frame
+                    global_data_frame = pd.concat(
+                        [global_data_frame, data_frame], ignore_index=True, axis=0
+                    )
+                print("New dataframe")
+                print(global_data_frame)
+    # export dataframe to csv
+    pdFunc.convert_to_csv("table_with_data_3.csv", global_data_frame)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

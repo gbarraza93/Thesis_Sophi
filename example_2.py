@@ -32,7 +32,7 @@ def main():
                 characteristics_directory = os.path.join(
                     day_path, ND.CHARACTERISTICS_DIR
                 )
-
+                ################################# Still to complete
                 characteristics_file = os.path.join(
                     characteristics_directory,
                     ND.FASTLANE_FILE_PREFIX
@@ -80,10 +80,6 @@ def main():
                 data_frame = pdFunc.drop_selected_columns(
                     ["DataTimestampLOCAL"], data_frame
                 )
-
-                # TODO: add 2nd part: Discrete time data
-
-                # TODO: add 3rd part: Previous time datat
 
                 print("Old data frame")
                 print(global_data_frame)

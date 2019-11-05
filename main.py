@@ -1,11 +1,8 @@
 import namesDictionary as ND
 import pandas as pd
-from datetime import datetime
 import pandas_dataframes_functions as pdFunc
-import XML_parsing_functions as xmlFunc
 import csv_functionalities as csvFunc
-import csv
-import os, sys
+import os
 
 
 def main():
@@ -25,14 +22,14 @@ def main():
             for day in sorted(month_days):
                 print(day)
                 day_path = os.path.join(month_path, day)
-                # day_folders = os.listdir(day_path)
-                # print(day_folders)
                 date_format = day.replace("_", "")  # getting date format as YYYYMMDD
+
+                # SECTION 1: Fast Lane Characteristics files
                 # Characteristics directory
                 characteristics_directory = os.path.join(
                     day_path, ND.CHARACTERISTICS_DIR
                 )
-
+                # FastlaneCharacteristics file
                 characteristics_file = os.path.join(
                     characteristics_directory,
                     ND.FASTLANE_FILE_PREFIX
@@ -42,62 +39,83 @@ def main():
                 if not os.path.exists(characteristics_file):
                     raise FileNotFoundError(characteristics_file)
 
-                # Getting the CDATA content from the XML file
-                cdata = xmlFunc.get_xml_CDATA_from_element_tail(
-                    characteristics_file, ND.HEADER
-                )
-                # Ridding out of unnecessary characters in our data
-                clean_cdata = csvFunc.remove_characters(cdata, ["'", '"'])
-                # Creating a csv reader object out of the clean data
-                myreader = csv.reader(clean_cdata.splitlines(), delimiter=";")
-                # Converting csv object back to a list
-                list_of_values = csvFunc.remove_empty_rows(myreader)
-                # Converting list into a Pandas data frame for easier data managing
-                data_frame = pdFunc.convert_data_to_pandas_dataframe(list_of_values)
-                # Removing unnecessary timestamps
-                useles_timestamps = ["DataTimestampUTC", "SaveTimestampLOCAL"]
-                data_frame = pdFunc.drop_selected_columns(useles_timestamps, data_frame)
+                characteristics_reader = csvFunc.create_csv_reader(characteristics_file)
 
-                # Convert DataTimestampLOCAL to date format
-                def to_datatime(dt):
-                    return datetime.strptime(dt, "%Y-%m-%d %H:%M:%S")
-
-                data_frame["DataTimestampLOCAL"] = data_frame[
-                    "DataTimestampLOCAL"
-                ].apply(to_datatime)
-
-                # Separate Date and Time into different columns
-                date = [d.date() for d in data_frame["DataTimestampLOCAL"]]
-                time = [d.time() for d in data_frame["DataTimestampLOCAL"]]
-
-                data_frame.insert(0, "date", date)
-                data_frame.insert(1, "time", time)
-
-                # # Take DataTimestampLOCAL as the index of the table
-                # data_frame.set_index('DataTimestampLOCAL', inplace = True)
-
-                # Remove DataTimestampLOCAL since we already split it into date and time
-                data_frame = pdFunc.drop_selected_columns(
-                    ["DataTimestampLOCAL"], data_frame
+                characteristics_table_list = csvFunc.to_table_list_without_empty_values(
+                    characteristics_reader
                 )
 
-                # TODO: add 2nd part: Discrete time data
+                characteristics_data_frame = pdFunc.create_general_dataframe_from_table(
+                    characteristics_table_list
+                )
 
-                # TODO: add 3rd part: Previous time datat
+                main_data_frame = (
+                    characteristics_data_frame  # This is the main dataframe per day
+                )
+                # SECTION 2: Typ_AQZustandArchiv files
 
-                print("Old data frame")
-                print(global_data_frame)
+                # Typ_Archiv directory
+                typ_archive_directory = os.path.join(day_path, ND.TYP_ARCHIVE_DIR)
+                for arch_file_prefix in ND.GREEN_FILES_PREFIX:
+                    arch_file_name = (
+                        arch_file_prefix
+                        + "{}".format(date_format)
+                        + ND.XML_FILES_ENDING
+                    )
+                    archive_file = os.path.join(typ_archive_directory, arch_file_name)
+                    if not os.path.exists(archive_file):
+                        continue  # if file is not found, continue with next one
+
+                    archive_reader = csvFunc.create_csv_reader(archive_file)
+
+                    archive_table_list = csvFunc.to_table_list_without_empty_values(
+                        archive_reader
+                    )
+
+                    archive_data_frame = pdFunc.create_general_dataframe_from_table(
+                        archive_table_list
+                    )
+
+                    if any(
+                        arch_file_prefix in file_pfx
+                        for file_pfx in ND.GREEN_FILES_PREFIX_BATCH_1
+                    ):
+                        # drop all the columns except for the date, time and C_Actors_0_Reason
+                        archive_data_frame = pdFunc.drop_all_columns_except(
+                            ["DataTimestampLOCAL", "C_Actors_0_Reason"],
+                            archive_data_frame,
+                        )
+                    else:
+                        # if file is found in GREEN_FILES_PREFIX_BATCH_2
+                        # drop all the columns except for the date, time and C_Actors_1_Reason
+                        archive_data_frame = pdFunc.drop_all_columns_except(
+                            ["DataTimestampLOCAL", "C_Actors_1_Reason"],
+                            archive_data_frame,
+                        )
+                    # Here is where we add the columns that correspond to the discrete data
+                    # (i.e. those incidents reported only at specific times)
+                    main_data_frame = (
+                        pdFunc.merge_dataframes_on_fist_smaller(
+                            main_data_frame,
+                            archive_data_frame,
+                            "DataTimestampLOCAL",
+                            tol="60s",
+                        )
+                        .apply(pdFunc.propagate_values_until_next)
+                        .apply(pdFunc.fill_NaN_with_default)
+                    )  # propagate the values of one occurrence until a new one and fill with "default" the remaining
+
+                # SECTION 3: RhoStruct files
+
                 if global_data_frame.empty:
-                    global_data_frame = data_frame
+                    global_data_frame = main_data_frame
                 else:
                     # Appending elements to the bottom of the data frame
                     global_data_frame = pd.concat(
-                        [global_data_frame, data_frame], ignore_index=True, axis=0
+                        [global_data_frame, main_data_frame], ignore_index=True, axis=0,
                     )
-                print("New dataframe")
-                print(global_data_frame)
     # export dataframe to csv
-    pdFunc.convert_to_csv("table_with_data_3.csv", global_data_frame)
+    pdFunc.convert_to_csv("table_with_data_4.csv", global_data_frame)
 
 
 if __name__ == "__main__":

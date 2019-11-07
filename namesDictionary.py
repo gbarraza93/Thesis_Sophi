@@ -1,6 +1,3 @@
-import os
-
-
 ### Keys and values useful for providing translations and paths to files
 
 CHARACTERISTICS_DIR = "FastLaneCharacteristics"

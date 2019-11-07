@@ -30,17 +30,27 @@ def drop_all_columns_except(columns_to_keep: List[str], pandas_dataframe):
     return pandas_dataframe[columns_to_keep]
 
 
-def merge_dataframes_on_nearest(left_df, right_df, key, tol: str = "0"):
-    return pd.merge_asof(
-        left_df, right_df, on=key, direction="nearest", tolerance=pd.Timedelta(tol)
-    )
+def rename_columns_in_dataframe(data_frame, old_names: List[str], new_names: List[str]):
+    names_dictionary = dict(zip(old_names, new_names))
+    data_frame.rename(columns=names_dictionary, inplace=True)
 
 
-def merge_dataframes_on_fist_smaller(left_df, right_df, timestamp, tol: str = "0"):
+def merge_dataframes_on_nearest(left_df, right_df, timestamp, tol: str = "0"):
     return pd.merge_asof(
         left_df,
         right_df,
         on=timestamp,
+        direction="nearest",
+        tolerance=pd.Timedelta(tol),
+    )
+
+
+def merge_dataframes_on_fist_smaller(left_df, right_df, tol: str = "0"):
+    return pd.merge_asof(
+        left_df,
+        right_df,
+        left_index=True,
+        right_index=True,
         direction="backward",
         tolerance=pd.Timedelta(tol),
     )
@@ -62,7 +72,7 @@ def create_general_dataframe_from_table(table_list: List[List[str]]):
     data_frame = drop_selected_columns(useles_timestamps, data_frame)
 
     data_frame["DataTimestampLOCAL"] = data_frame["DataTimestampLOCAL"].apply(
-        to_datatime
+        to_datetime
     )
 
     # Separate Date and Time into different columns
@@ -72,11 +82,26 @@ def create_general_dataframe_from_table(table_list: List[List[str]]):
     data_frame.insert(0, "date", date)
     data_frame.insert(1, "time", time)
 
+    # Set DataTimestampLOCAL as index
+    data_frame.set_index("DataTimestampLOCAL", inplace=True)
+
     # Remove DataTimestampLOCAL since we already split it into date and time
     # data_frame = drop_selected_columns(["DataTimestampLOCAL"], data_frame)
     return data_frame
 
 
-# Convert DataTimestampLOCAL to date format
-def to_datatime(dt):
-    return datetime.strptime(dt, "%Y-%m-%d %H:%M:%S")
+# Convert DataTimestampLOCAL to date and time format and round to minutes
+def to_datetime(dt):
+    return datetime.strptime(dt, "%Y-%m-%d %H:%M:%S").replace(second=0)
+
+
+def subtract_time_str(time: str, to_subtract: str):
+    original_time = datetime.strptime(time, "%H:%M:%S")
+    minus_time = datetime.strptime(to_subtract, "%H:%M:%S")
+    return str(original_time - minus_time)
+
+
+def add_minutes_to_timestamp_idx(data_frame, minutes: int):
+    return data_frame.set_index(
+        data_frame.index.values + pd.Timedelta(minutes=minutes), inplace=True
+    )

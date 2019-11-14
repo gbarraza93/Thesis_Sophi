@@ -19,7 +19,7 @@ def convert_data_to_pandas_dataframe(data: List[List[str]]):
 
 
 def convert_to_csv(file_name: str, pandas_dataframe):
-    pandas_dataframe.to_csv(file_name, sep=";", index=False)
+    pandas_dataframe.to_csv(file_name, sep=";", index=True, index_label=None)
 
 
 def drop_selected_columns(columns_to_delete: List[str], pandas_dataframe):
@@ -85,8 +85,15 @@ def create_general_dataframe_from_table(table_list: List[List[str]]):
     # Set DataTimestampLOCAL as index
     data_frame.set_index("DataTimestampLOCAL", inplace=True)
 
-    # Remove DataTimestampLOCAL since we already split it into date and time
-    # data_frame = drop_selected_columns(["DataTimestampLOCAL"], data_frame)
+    # Adding month_name and day_name to table
+    month_name = data_frame.index.month_name()
+    day_name = data_frame.index.day_name()
+
+    # insertamos la columna en la posición 3 (a la derecha de "time")
+    data_frame.insert(2, "month_name", month_name)
+    # insertamos la columna en la posición 4 (a la derecha de "month_name")
+    data_frame.insert(3, "day_name", day_name)
+
     return data_frame
 
 

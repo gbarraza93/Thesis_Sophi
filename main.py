@@ -240,8 +240,15 @@ def main():
                 else:
                     # Appending elements to the bottom of the data frame
                     global_data_frame = pd.concat(
-                        [global_data_frame, main_data_frame], ignore_index=True, axis=0,
+                        [global_data_frame, main_data_frame],
+                        ignore_index=False,
+                        axis=0,
                     )
+
+    # deleting "traffic_load", "fee" and "automatic_fee" from table
+    global_data_frame = pdFunc.drop_selected_columns(
+        ["traffic_load", "fee", "automatic_fee"], global_data_frame
+    )
     # fill empty cells with 0
     global_data_frame = global_data_frame.fillna(0)
     # export dataframe to csv

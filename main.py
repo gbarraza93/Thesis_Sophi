@@ -46,9 +46,9 @@ def main():
                     characteristics_table_list
                 )
 
-                main_data_frame = (
-                    characteristics_data_frame  # This is the main dataframe per day
-                )
+                main_data_frame = characteristics_data_frame.sort_index(
+                    axis=0
+                )  # This is the main dataframe per day (sorted by timestamp)
                 # SECTION 2: Typ_AQZustandArchiv files
 
                 # Typ_Archiv directory
@@ -252,7 +252,7 @@ def main():
     # fill empty cells with 0
     global_data_frame = global_data_frame.fillna(0)
     # export dataframe to csv
-    pdFunc.convert_to_csv("table_with_data_FINAL.csv", global_data_frame)
+    pdFunc.convert_to_csv("table_with_data_FINAL_nueva.csv", global_data_frame)
 
 
 if __name__ == "__main__":

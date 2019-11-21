@@ -10,7 +10,7 @@ FASTLANE_FILE_PREFIX = (
 
 HEADER = "Header"
 
-MAIN_DIRECTORY = "/home/memo/Desktop/Sample_Data/Sample_Data/"
+MAIN_DIRECTORY = "/home/memo/Desktop//Data/"
 XML_FILES_ENDING = ".01.xml"
 
 

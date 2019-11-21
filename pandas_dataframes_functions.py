@@ -48,7 +48,7 @@ def merge_dataframes_on_nearest(left_df, right_df, timestamp, tol: str = "0"):
 def merge_dataframes_on_fist_smaller(left_df, right_df, tol: str = "0"):
     return pd.merge_asof(
         left_df,
-        right_df,
+        right_df.sort_index(axis=0),
         left_index=True,
         right_index=True,
         direction="backward",

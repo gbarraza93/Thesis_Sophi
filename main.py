@@ -46,9 +46,7 @@ def main():
                     characteristics_table_list
                 )
 
-                main_data_frame = characteristics_data_frame.sort_index(
-                    axis=0
-                )  # This is the main dataframe per day (sorted by timestamp)
+                main_data_frame = characteristics_data_frame  # This is the main dataframe per day (sorted by timestamp)
                 # SECTION 2: Typ_AQZustandArchiv files
 
                 # Typ_Archiv directory

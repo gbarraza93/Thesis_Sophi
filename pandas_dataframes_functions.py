@@ -48,7 +48,7 @@ def merge_dataframes_on_nearest(left_df, right_df, timestamp, tol: str = "0"):
 def merge_dataframes_on_fist_smaller(left_df, right_df, tol: str = "0"):
     return pd.merge_asof(
         left_df,
-        right_df.sort_index(axis=0),
+        right_df,
         left_index=True,
         right_index=True,
         direction="backward",
@@ -94,7 +94,7 @@ def create_general_dataframe_from_table(table_list: List[List[str]]):
     # insertamos la columna en la posición 4 (a la derecha de "month_name")
     data_frame.insert(3, "day_name", day_name)
 
-    return data_frame
+    return data_frame.sort_index(axis=0)
 
 
 # Convert DataTimestampLOCAL to date and time format and round to minutes
